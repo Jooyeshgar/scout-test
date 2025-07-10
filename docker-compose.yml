@@ -1,12 +1,12 @@
 services:
     laravel.test:
         build:
-            context: './vendor/laravel/sail/runtimes/8.4'
+            context: ./vendor/laravel/sail/runtimes/8.4
             dockerfile: Dockerfile
             args:
                 WWWGROUP: '${WWWGROUP}'
                 MYSQL_CLIENT: mariadb-client
-        image: 'sail-8.4/app'
+        image: sail-8.4/app
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         ports:
@@ -24,6 +24,7 @@ services:
             - sail
         depends_on:
             - mariadb
+            - typesense
     mariadb:
         image: 'mariadb:11'
         ports:
@@ -48,9 +49,31 @@ services:
                 - '--innodb_initialized'
             retries: 3
             timeout: 5s
+    typesense:
+        image: 'typesense/typesense:27.1'
+        ports:
+            - '${FORWARD_TYPESENSE_PORT:-8108}:8108'
+        environment:
+            TYPESENSE_DATA_DIR: '${TYPESENSE_DATA_DIR:-/typesense-data}'
+            TYPESENSE_API_KEY: '${TYPESENSE_API_KEY:-xyz}'
+            TYPESENSE_ENABLE_CORS: '${TYPESENSE_ENABLE_CORS:-true}'
+        volumes:
+            - 'sail-typesense:/typesense-data'
+        networks:
+            - sail
+        healthcheck:
+            test:
+                - CMD
+                - bash
+                - '-c'
+                - 'exec 3<>/dev/tcp/localhost/8108 && printf ''GET /health HTTP/1.1\r\nConnection: close\r\n\r\n'' >&3 && head -n1 <&3 | grep ''200'' && exec 3>&-'
+            retries: 5
+            timeout: 7s
 networks:
     sail:
         driver: bridge
 volumes:
     sail-mariadb:
+        driver: local
+    sail-typesense:
         driver: local
