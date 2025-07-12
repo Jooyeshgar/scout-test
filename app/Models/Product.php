@@ -31,6 +31,14 @@ class Product extends Model
         static::updating(function ($product) {
             dump('updating');
         });
+
+        static::updated(function ($product) {
+            dump('updated');
+        });
+
+        static::saved(function ($product) {
+            dump('saved');
+        });
     }
 
     public function toSearchableArray()
